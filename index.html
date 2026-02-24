@@ -1,0 +1,215 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Devji Pro Trading Journal</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+  font-family:Arial;
+  background:#0f172a;
+  color:white;
+  padding:20px;
+}
+nav button{
+  background:#1e293b;
+  color:white;
+  border:none;
+  padding:10px 15px;
+  margin-right:10px;
+  border-radius:8px;
+  cursor:pointer;
+}
+nav button:hover{
+  background:#38bdf8;
+}
+.card{
+  background:#1e293b;
+  padding:15px;
+  margin:10px 0;
+  border-radius:10px;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:10px;
+}
+input,select,textarea,button{
+  width:100%;
+  padding:8px;
+  margin:5px 0;
+  border-radius:6px;
+  border:none;
+}
+.saveBtn{
+  background:#38bdf8;
+  font-weight:bold;
+  cursor:pointer;
+}
+.clearBtn{
+  background:#ef4444;
+  font-weight:bold;
+  cursor:pointer;
+}
+.page{
+  display:none;
+}
+.active{
+  display:block;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📊 Devji Trading Journal</h1>
+
+<nav>
+<button onclick="showPage('dashboard')">Dashboard</button>
+<button onclick="showPage('add')">Add Trade</button>
+<button onclick="showPage('analytics')">Analytics</button>
+</nav>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="page active">
+<h2>🏠 Dashboard</h2>
+<div class="grid">
+  <div class="card">Total Trades: <span id="totalTrades">0</span></div>
+  <div class="card">Win Rate: <span id="winRate">0%</span></div>
+  <div class="card">Total Profit/Loss: ₹<span id="totalPL">0</span></div>
+  <div class="card">Risk Reward Ratio: <span id="rr">0</span></div>
+</div>
+
+<button class="clearBtn" onclick="clearData()">🗑 Clear All Data</button>
+
+</div>
+
+<!-- ADD TRADE -->
+<div id="add" class="page">
+<h2>➕ Add Trade</h2>
+<div class="card">
+  <input type="date" id="date">
+  <input type="text" id="stock" placeholder="Stock Name">
+  <input type="number" id="profit" placeholder="Profit (₹)">
+  <input type="number" id="loss" placeholder="Loss (₹)">
+  <select id="result">
+    <option value="Win">Win</option>
+    <option value="Loss">Loss</option>
+  </select>
+  <textarea id="notes" placeholder="Notes"></textarea>
+  <button class="saveBtn" onclick="addTrade()">Save Trade</button>
+</div>
+</div>
+
+<!-- ANALYTICS -->
+<div id="analytics" class="page">
+<h2>📈 Analytics</h2>
+<div class="card">
+  <canvas id="monthlyChart"></canvas>
+</div>
+<div class="card">
+  <canvas id="pieChart"></canvas>
+</div>
+</div>
+
+<script>
+
+let trades = JSON.parse(localStorage.getItem("trades")) || [];
+
+function showPage(pageId){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById(pageId).classList.add("active");
+  updateDashboard();
+  updateCharts();
+}
+
+function saveData(){
+  localStorage.setItem("trades", JSON.stringify(trades));
+}
+
+function addTrade(){
+  let trade={
+    date:date.value,
+    stock:stock.value,
+    profit:Number(profit.value)||0,
+    loss:Number(loss.value)||0,
+    result:result.value,
+    notes:notes.value
+  };
+  trades.push(trade);
+  saveData();
+  alert("Trade Saved 🔥");
+  updateDashboard();
+  updateCharts();
+}
+
+function clearData(){
+  if(confirm("Are you sure you want to delete all trades?")){
+    trades = [];
+    localStorage.removeItem("trades");
+    updateDashboard();
+    updateCharts();
+    alert("All Data Cleared ✅");
+  }
+}
+
+function updateDashboard(){
+  let total = trades.length;
+  let wins = trades.filter(t => t.result === "Win").length;
+
+  let totalProfit = trades.reduce((sum, t) => sum + t.profit, 0);
+  let totalLoss = trades.reduce((sum, t) => sum + t.loss, 0);
+
+  let netPL = totalProfit - totalLoss;
+  let rr = totalLoss > 0 ? (totalProfit / totalLoss).toFixed(2) : 0;
+
+  document.getElementById("totalTrades").innerText = total;
+  document.getElementById("winRate").innerText =
+    total ? ((wins / total) * 100).toFixed(1) + "%" : "0%";
+  document.getElementById("totalPL").innerText = netPL;
+  document.getElementById("rr").innerText = rr;
+}
+
+let monthlyChart, pieChart;
+
+function updateCharts(){
+
+  let months={};
+  trades.forEach(t=>{
+    let m=t.date?t.date.substring(0,7):"Unknown";
+    months[m]=(months[m]||0)+t.profit-t.loss;
+  });
+
+  let labels=Object.keys(months);
+  let data=Object.values(months);
+
+  if(monthlyChart) monthlyChart.destroy();
+  monthlyChart=new Chart(document.getElementById("monthlyChart"),{
+    type:'bar',
+    data:{
+      labels:labels,
+      datasets:[{label:"Monthly P/L",data:data}]
+    }
+  });
+
+  let win=trades.filter(t=>t.result==="Win").length;
+  let loss=trades.filter(t=>t.result==="Loss").length;
+
+  if(pieChart) pieChart.destroy();
+  pieChart=new Chart(document.getElementById("pieChart"),{
+    type:'pie',
+    data:{
+      labels:["Win","Loss"],
+      datasets:[{data:[win,loss]}]
+    }
+  });
+}
+
+updateDashboard();
+updateCharts();
+
+</script>
+
+</body>
+</html>
